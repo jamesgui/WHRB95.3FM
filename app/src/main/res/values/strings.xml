@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">WHRB 95.3 FM</string>
+    <string name="button_play">PLAY</string>
+    <string name="button_stop">STOP</string>
+    <string name="message">Please wait a few seconds for music to load.</string>
+    <string name="now_playing">Now Playing:</string>
+</resources>
