@@ -98,35 +98,34 @@ public class MainActivity extends AppCompatActivity {
                                         e.printStackTrace();
                                     }
 
+                                    // create text to be displayed in nowPlaying TextView and update
+                                    String np ="Now Playing: " + title + " by " + artist + " on "
+                                            + show;
                                     // if nowPlaying has changed, update UI
                                     if (!prevNowPlaying.equals(title + artist)){
                                         changed = true;
-                                        // create text to be displayed in nowPlaying TextView and update
-                                        String np ="Now Playing: " + title + " by " + artist + " on "
-                                                + show;
                                         prevNowPlaying = title + artist;
                                         nowPlaying.setText(np);
-
-                                        // creates ongoing notification that updates nowPlaying
-                                        if (isServiceRunning(PlayService.class)){
-                                            mNotificationManager =
-                                                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                                            PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
-                                                    new Intent(getApplicationContext(), MainActivity.class),
-                                                    PendingIntent.FLAG_UPDATE_CURRENT);
-                                            Notification.Builder notification =
-                                                    new Notification.Builder(getApplicationContext())
-                                                    .setContentText("Streaming from WHRB")
-                                                    .setContentIntent(pi)
-                                                    .setOngoing(true).setContentTitle("WHRB 95.3 FM")
-                                                    .setContentText(np)
-                                                    .setSmallIcon(android.R.drawable.ic_media_play)
-                                                    .setAutoCancel(false);
-                                            mNotificationManager.notify(1,notification.build());
-
-                                        }
-
                                     }
+
+                                    // creates ongoing notification that updates nowPlaying
+                                    if (isServiceRunning(PlayService.class)){
+                                        mNotificationManager =
+                                                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                                        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
+                                                new Intent(getApplicationContext(), MainActivity.class),
+                                                PendingIntent.FLAG_UPDATE_CURRENT);
+                                        Notification.Builder notification =
+                                                new Notification.Builder(getApplicationContext())
+                                                        .setContentText("Streaming from WHRB")
+                                                        .setContentIntent(pi)
+                                                        .setOngoing(true).setContentTitle("WHRB 95.3 FM")
+                                                        .setContentText(np)
+                                                        .setSmallIcon(android.R.drawable.ic_media_play)
+                                                        .setAutoCancel(false);
+                                        mNotificationManager.notify(1,notification.build());
+                                    }
+
 
                                 }
                             }, new Response.ErrorListener() {
