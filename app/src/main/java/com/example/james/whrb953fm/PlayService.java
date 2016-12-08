@@ -47,6 +47,10 @@ public class PlayService extends Service implements MediaPlayer.OnPreparedListen
             // prepares mediaPlayer in another thread so it loads without interrupting main thread
             mediaPlayer.setOnPreparedListener(this);
             mediaPlayer.prepareAsync();
+            // let user know app is loading
+            Toast loading = Toast.makeText(getApplicationContext(), "Loading stream...",
+                    Toast.LENGTH_LONG);
+            loading.show();
             // pendingIntent returns to app when notification is clicked
             PendingIntent pi = PendingIntent.getActivity(this, 0,
                     new Intent(getApplicationContext(), MainActivity.class),
@@ -69,6 +73,9 @@ public class PlayService extends Service implements MediaPlayer.OnPreparedListen
 
     /** Called when MediaPlayer is ready */
     public void onPrepared(MediaPlayer player) {
+        Toast loaded = Toast.makeText(getApplicationContext(), "Loaded!",
+                Toast.LENGTH_SHORT);
+        loaded.show();
         player.start();
     }
 
