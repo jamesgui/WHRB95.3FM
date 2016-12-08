@@ -18,6 +18,7 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import com.android.volley.Request;
@@ -33,32 +34,41 @@ import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
 
+    // class variables
     Intent intent;
     TextView nowPlaying;
+    // now playing and recently played JSON objects
     String npURL = "http://whrb-api.herokuapp.com/nowplaying";
     String rpURL = "http://whrb-api.herokuapp.com/recentplays/5";
     Thread t;
+    // boolean for thread to stop
     boolean stop = false;
     NotificationManager mNotificationManager;
 
+    /** Called when app is opened anew  */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // renders layout
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
+        // create an Intent to start PlayService when play button pressed
         intent = new Intent(getApplicationContext(), PlayService.class);
+
+        // get nowPlaying TextView so we can update it as needed
         nowPlaying = (TextView) findViewById(R.id.nowPlaying);
 
-        // create thread to query for playlist history and current track
+        // create thread to query for playlist history and nowPlaying every 5 seconds
         t = new Thread(new Runnable() {
             @Override
             public void run(){
                 while (!stop){
+                    // create a new JSON object request to get nowPlaying info
                     JsonObjectRequest req1 = new JsonObjectRequest
                             (Request.Method.GET, npURL, null, new Response.Listener<JSONObject>() {
                                 @Override
                                 public void onResponse(JSONObject response) {
+                                    // handle errors and get info
                                     String title = null;
                                     try {
                                         title = (String) response.get("SongName");
@@ -71,8 +81,25 @@ public class MainActivity extends AppCompatActivity {
                                     } catch (JSONException e) {
                                         e.printStackTrace();
                                     }
-                                    String np ="Now Playing: " + title + " by " + artist;
+                                    JSONObject info = null;
+                                    try {
+                                        info = (JSONObject) response.get("ShowInfo");
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                    String show = "";
+                                    try {
+                                        assert info != null;
+                                        show = (String) info.get("ShowName");
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                    // create text to be displayed in nowPlaying TextView and update
+                                    String np ="Now Playing: " + title + " by " + artist + " on "
+                                            + show;
                                     nowPlaying.setText(np);
+
+                                    // creates ongoing notification that updates nowPlaying
                                     if (isServiceRunning(PlayService.class)){
                                         mNotificationManager =
                                                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -94,15 +121,21 @@ public class MainActivity extends AppCompatActivity {
 
                                 @Override
                                 public void onErrorResponse(VolleyError error) {
-                                    // TODO Auto-generated method stub
+                                    // when Volley returns an error, tell user that there is no network
+                                    Toast toast = Toast.makeText(getApplicationContext(),
+                                            "No network connection", Toast.LENGTH_SHORT);
+                                    toast.show();
+                                    // stops thread
+                                    stop = true;
                                 }
                             });
+                    // second Json request, this time for an array of recently played tracks
                     JsonArrayRequest req2 = new JsonArrayRequest
                             (Request.Method.GET, rpURL, null, new Response.Listener<JSONArray>() {
                                 @Override
                                 public void onResponse(JSONArray response) {
-                                    String[] recent_plays = new String[response.length()+1];
-                                    recent_plays[0] = "Last 5 Tracks Played";
+                                    // store listView entries in an array of strings
+                                    String[] recent_plays = new String[response.length()];
                                     for (int i = 0; i < response.length(); i++) {
                                         JSONObject song = null;
                                         try {
@@ -130,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
                                         } catch (JSONException e){
                                             e.printStackTrace();
                                         }
+                                        // creates date/time format
                                         SimpleDateFormat hr_24 = new SimpleDateFormat("HH:mm:ss");
                                         SimpleDateFormat hr_12 = new SimpleDateFormat("K:mm a, z");
                                         Date hr_24dt = null;
@@ -140,12 +174,12 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                         time = hr_12.format(hr_24dt);
 
-                                        String history = time + " | " + title + " by " + artist;
-                                        recent_plays[i+1] = history;
+                                        recent_plays[i] = time + " | " + title + " by " + artist;
                                     }
-                                    ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                                            MainActivity.this, android.R.layout.simple_list_item_1,
-                                            recent_plays);
+
+                                    // update listView with new information on playlist history
+                                    ArrayAdapter<String> adapter = new ArrayAdapter<>(MainActivity.this,
+                                            android.R.layout.simple_list_item_1, recent_plays);
                                     ListView listView = (ListView) findViewById(R.id.listView);
                                     listView.setAdapter(adapter);
                                 }
@@ -153,12 +187,17 @@ public class MainActivity extends AppCompatActivity {
                                 {
                                     @Override
                                     public void onErrorResponse (VolleyError error){
-                                    // TODO Auto-generated method stub
+                                        // when Volley returns an error, tell user that there is no network
+                                        Toast toast = Toast.makeText(getApplicationContext(),
+                                                "No network connection", Toast.LENGTH_SHORT);
+                                        toast.show();
+                                        // stops thread
+                                        stop = true;
                                     }
                                 }
                             );
 
-                    // Access the RequestQueue through your singleton class.
+                    // add requests to RequestQueue to be processed
                     RequestQueueSingleton.getInstance(getApplicationContext()).addToRequestQueue(req1);
                     RequestQueueSingleton.getInstance(getApplicationContext()).addToRequestQueue(req2);
 
@@ -173,10 +212,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
+
+        // actually start above thread
         t.start();
     }
 
-
+    /** Called when app is opened from a running state (but in the background) */
     @Override
     protected void onStart()
     {
@@ -189,34 +230,30 @@ public class MainActivity extends AppCompatActivity {
         toggle.setChecked(sharedPrefs.getBoolean("checked", true));
     }
 
+    /** Called when app is destroyed via backspace key or manually */
     @Override
     protected void onDestroy(){
-
         stop=true;
         super.onDestroy();
     }
 
 
-
+    /** Starts PlayService when button is toggle "on" */
     public void onToggleClicked(View view){
         boolean on = ((ToggleButton)view).isChecked();
 
         if (on){
-            SharedPreferences.Editor editor = getSharedPreferences("com.example.james.whrb953fm",
-                    MODE_PRIVATE).edit();
-            editor.putBoolean("checked", true);
-            editor.apply();
+            rememberToggleState(true);
             startService(intent);
         }
         else {
-            SharedPreferences.Editor editor = getSharedPreferences("com.example.james.whrb953fm",
-                    MODE_PRIVATE).edit();
-            editor.putBoolean("checked", false);
-            editor.apply();
+            rememberToggleState(false);
             stopService(intent);
         }
 
     }
+
+    /** Checks if PlayService is running */
     private boolean isServiceRunning(Class<?> PlayService){
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
@@ -225,6 +262,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    /** Remembers toggle state of button */
+    private void rememberToggleState(boolean state){
+        SharedPreferences.Editor editor = getSharedPreferences("com.example.james.whrb953fm",
+                MODE_PRIVATE).edit();
+        editor.putBoolean("checked", state);
+        editor.apply();
     }
 
 
